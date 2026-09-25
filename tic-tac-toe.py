@@ -145,12 +145,16 @@ def get_computer_move(board, difficulty):
 def get_human_move(player, n, board):
     while True:
         user_input = input(
-            f"\nPlayer {player}'s turn! Enter row and col (0 to {n-1}, e.g., '1 2'): "
-        ).strip()
+            f"\nPlayer {player}'s turn! Enter row and col (0 to {n-1}, e.g., '1 2' or 'q' to quit): "
+        ).strip().lower()
+
+        if user_input in ("q", "quit", "exit"):
+            return None, None
+
         try:
             parts = user_input.split()
             if len(parts) != 2:
-                print("Please enter exactly two numbers (row and column).")
+                print("Please enter exactly two numbers (row and column) or 'q' to exit.")
                 continue
             r, c = int(parts[0]), int(parts[1])
             if not (0 <= r < n and 0 <= c < n):
@@ -160,7 +164,36 @@ def get_human_move(player, n, board):
             else:
                 return r, c
         except ValueError:
-            print("Invalid input. Please enter numbers only (e.g., '1 2').")
+            print("Invalid input. Please enter numbers only (e.g., '1 2') or 'q' to quit.")
+
+
+def select_game_mode():
+    while True:
+        print("\nSelect Game Mode:")
+        print("  [1] Two Players (Human vs Human)")
+        print("  [2] Single Player (Human vs AI)")
+
+        choice = input("Enter mode choice (1 or 2): ").strip()
+        if choice not in ("1", "2"):
+            print("Invalid selection. Please enter 1 or 2.")
+            continue
+
+        selected_mode = int(choice)
+        mode_label = (
+            "Two Players (Human vs Human)"
+            if selected_mode == 1
+            else "Single Player (Human vs AI)"
+        )
+
+        confirm = input(
+            f"You selected [{selected_mode}] {mode_label}. Confirm? (y to proceed / c to change): "
+        ).strip().lower()
+        if confirm in ("y", "yes"):
+            return selected_mode
+        elif confirm in ("c", "change"):
+            print("Resetting choice. Please pick your game mode again.")
+        else:
+            print("Unrecognized response. Let's reselect.")
 
 
 def play_round():
@@ -179,18 +212,10 @@ def play_round():
             print("Invalid input. Please enter a whole number.")
 
     print(f"\nRule: Fill an entire line of {n} marks (row, col, or diagonal) to win.")
+    print("Note: You can type 'q' at any turn to exit the current match.")
 
-    # 2. Select Game Mode (PvP or PvAI)
-    print("\nSelect Game Mode:")
-    print("  [1] Two Players (Human vs Human)")
-    print("  [2] Single Player (Human vs AI)")
-
-    while True:
-        mode_choice = input("Enter mode choice (1 or 2): ").strip()
-        if mode_choice in ("1", "2"):
-            game_mode = int(mode_choice)
-            break
-        print("Invalid selection. Please enter 1 or 2.")
+    # 2. Select Game Mode with confirmation & change option
+    game_mode = select_game_mode()
 
     # 3. Select Difficulty (Only if playing against AI)
     difficulty = None
@@ -215,7 +240,9 @@ def play_round():
         print(f"\nStarting Human vs Human game on a {n}x{n} grid!")
         print("Player 1 is 'X', Player 2 is 'O'.\n")
     else:
-        print(f"\nStarting Human vs AI game on a {n}x{n} grid! (Difficulty: {difficulty_labels[difficulty]})")
+        print(
+            f"\nStarting Human vs AI game on a {n}x{n} grid! (Difficulty: {difficulty_labels[difficulty]})"
+        )
         print("You are 'X', AI is 'O'.\n")
 
     print_board(board)
@@ -224,10 +251,16 @@ def play_round():
     while True:
         if current_player == "X":
             r, c = get_human_move("X", n, board)
+            if r is None:
+                print("\nMatch aborted by player.")
+                break
             board[r][c] = "X"
         else:
             if game_mode == 1:
                 r, c = get_human_move("O", n, board)
+                if r is None:
+                    print("\nMatch aborted by player.")
+                    break
                 board[r][c] = "O"
             else:
                 print("\nComputer (O) is calculating its move...")
@@ -260,11 +293,15 @@ def play_round():
 
 
 def main():
-    print("Welcome to N x N Tic-Tac-Toe!")
+    print("          Welcome to N x N Tic-Tac-Toe!")
     while True:
         play_round()
         while True:
-            play_again = input("\nWould you like to play another round? (y/n): ").strip().lower()
+            play_again = (
+                input("\nWould you like to play another round? (y/n): ")
+                .strip()
+                .lower()
+            )
             if play_again in ("y", "yes"):
                 print("\nRestarting game...\n")
                 break
@@ -277,4 +314,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
