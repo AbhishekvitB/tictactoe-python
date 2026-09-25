@@ -27,3 +27,4 @@ A dynamic, customizable command-line implementation of the classic Tic-Tac-Toe g
 * Ensure Python 3 is installed. Verify via terminal:
   ```bash
   python --version
+* Copy paste the code from the repository into your python and run the code.
