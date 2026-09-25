@@ -1,8 +1,6 @@
 import math
 import random
 
-WIN_COUNT = 3
-
 
 def print_board(board):
     n = len(board)
@@ -14,108 +12,64 @@ def print_board(board):
             print("  " + "+".join(["---"] * n))
 
 
-def check_line(line):
-    count_x = 0
-    count_o = 0
-    for cell in line:
-        if cell == "X":
-            count_x += 1
-            count_o = 0
-            if count_x == WIN_COUNT:
-                return "X"
-        elif cell == "O":
-            count_o += 1
-            count_x = 0
-            if count_o == WIN_COUNT:
-                return "O"
-        else:
-            count_x = 0
-            count_o = 0
-    return None
-
-
 def check_winner(board):
     n = len(board)
-    k = WIN_COUNT
 
-    # Rows
+    # Check Rows
     for r in range(n):
-        winner = check_line(board[r])
-        if winner:
-            return winner
+        first = board[r][0]
+        if first != " " and all(board[r][c] == first for c in range(n)):
+            return first
 
-    # Columns
+    # Check Columns
     for c in range(n):
-        col_cells = [board[r][c] for r in range(n)]
-        winner = check_line(col_cells)
-        if winner:
-            return winner
+        first = board[0][c]
+        if first != " " and all(board[r][c] == first for r in range(n)):
+            return first
 
-    # Main diagonals
-    for start_r in range(n):
-        for start_c in range(n):
-            if start_r + k <= n and start_c + k <= n:
-                diag = [board[start_r + i][start_c + i] for i in range(k)]
-                if all(cell == diag[0] and cell != " " for cell in diag):
-                    return diag[0]
+    # Check Main Diagonal (Top-Left to Bottom-Right)
+    first_main = board[0][0]
+    if first_main != " " and all(board[i][i] == first_main for i in range(n)):
+        return first_main
 
-    # Anti-diagonals
-    for start_r in range(n):
-        for start_c in range(n):
-            if start_r + k <= n and start_c - k + 1 >= 0:
-                diag = [board[start_r + i][start_c - i] for i in range(k)]
-                if all(cell == diag[0] and cell != " " for cell in diag):
-                    return diag[0]
+    # Check Anti-Diagonal (Top-Right to Bottom-Left)
+    first_anti = board[0][n - 1]
+    if first_anti != " " and all(board[i][n - 1 - i] == first_anti for i in range(n)):
+        return first_anti
 
-    # Draw or ongoing
+    # Check for Draw or Ongoing Game
     if any(board[r][c] == " " for r in range(n) for c in range(n)):
         return None
     return "Draw"
 
 
-def evaluate_window(window):
-    score = 0
-    o_count = window.count("O")
-    x_count = window.count("X")
-    empty_count = window.count(" ")
+def evaluate_line(line, n):
+    o_count = line.count("O")
+    x_count = line.count("X")
 
-    if o_count == 3:
-        score += 100
-    elif o_count == 2 and empty_count == 1:
-        score += 10
-    elif o_count == 1 and empty_count == 2:
-        score += 1
+    # If both players have marks in this line, neither can complete it
+    if o_count > 0 and x_count > 0:
+        return 0
 
-    if x_count == 3:
-        score -= 100
-    elif x_count == 2 and empty_count == 1:
-        score -= 15
-    elif x_count == 1 and empty_count == 2:
-        score -= 1
-
-    return score
+    if o_count > 0:
+        return 10 ** (o_count)
+    if x_count > 0:
+        return -(10 ** (x_count))
+    return 0
 
 
 def evaluate_board(board):
     n = len(board)
-    k = WIN_COUNT
     score = 0
 
-    for r in range(n):
-        for c in range(n - k + 1):
-            score += evaluate_window([board[r][c + i] for i in range(k)])
+    # Evaluate rows and columns
+    for i in range(n):
+        score += evaluate_line(board[i], n)
+        score += evaluate_line([board[r][i] for r in range(n)], n)
 
-    for c in range(n):
-        for r in range(n - k + 1):
-            score += evaluate_window([board[r + i][c] for i in range(k)])
-
-    for r in range(n - k + 1):
-        for c in range(n - k + 1):
-            score += evaluate_window([board[r + i][c + i] for i in range(k)])
-
-    for r in range(n - k + 1):
-        for c in range(k - 1, n):
-            score += evaluate_window([board[r + i][c - i] for i in range(k)])
+    # Evaluate main diagonal and anti-diagonal
+    score += evaluate_line([board[i][i] for i in range(n)], n)
+    score += evaluate_line([board[i][n - 1 - i] for i in range(n)], n)
 
     return score
 
@@ -128,9 +82,9 @@ def get_available_moves(board):
 def minimax(board, depth, is_maximizing, alpha, beta, max_depth):
     winner = check_winner(board)
     if winner == "O":
-        return 1000 - depth
+        return 1000000 - depth
     if winner == "X":
-        return depth - 1000
+        return depth - 1000000
     if winner == "Draw":
         return 0
     if depth >= max_depth:
@@ -164,11 +118,13 @@ def minimax(board, depth, is_maximizing, alpha, beta, max_depth):
 
 def get_best_move(board):
     n = len(board)
+    # Search deeper on smaller grids, shallower on larger grids to keep response fast
     max_depth = 6 if n == 3 else (4 if n == 4 else 3)
     best_val = -math.inf
     best_move = None
     moves = get_available_moves(board)
 
+    # Center-outward search order for faster alpha-beta pruning
     center = (n - 1) / 2
     moves.sort(key=lambda pos: abs(pos[0] - center) + abs(pos[1] - center))
 
@@ -192,77 +148,101 @@ def get_computer_move(board, difficulty):
 
 
 def play_round():
-    while True:
-        try:
-            n = int(input("Enter board dimension N (e.g., 3, 4, 5, 6): ").strip())
-            if n >= 3:
-                break
-            print("Board size must be at least 3.")
-        except ValueError:
-            print("Please enter a valid integer.")
-    WIN_COUNT=n
-    print(f"\nGoal: Connect {WIN_COUNT} in a row to win.\n")
-    
-    print("\nSelect Difficulty:")
-    print("1. Easy (Random)")
-    print("2. Medium (Mixed)")
-    print("3. Hard (Alpha-Beta Minimax)")
+    print("=" * 50)
+    print("           N x N CLASSIC TIC-TAC-TOE")
+    print("=" * 50)
 
     while True:
-        choice = input("Enter difficulty (1, 2, or 3): ").strip()
+        try:
+            n = int(input("\nEnter board size N (e.g., 3 for 3x3, 4 for 4x4): ").strip())
+            if n >= 3:
+                break
+            print("Please enter a board size of 3 or higher.")
+        except ValueError:
+            print("Invalid input. Please enter a whole number.")
+
+    print(f"\nRule: Fill an entire row, column, or diagonal of length {n} to win.")
+
+    print("\nChoose AI Difficulty Level:")
+    print("  [1] Easy   - Makes purely random moves")
+    print("  [2] Medium - Plays a balanced mix of smart and casual moves")
+    print("  [3] Hard   - Tactical Minimax AI")
+
+    difficulty_labels = {1: "Easy", 2: "Medium", 3: "Hard"}
+    while True:
+        choice = input("Enter choice (1, 2, or 3): ").strip()
         if choice in ("1", "2", "3"):
             difficulty = int(choice)
             break
-        print("Invalid choice. Please enter 1, 2, or 3.")
+        print("Invalid selection. Please enter 1, 2, or 3.")
 
     board = [[" " for _ in range(n)] for _ in range(n)]
     current_player = "X"
 
-    print()
+    print(f"\nGame started on a {n}x{n} grid! (Difficulty: {difficulty_labels[difficulty]})")
+    print(f"Goal: Connect {n} marks in a row to win.")
+    print("You are playing as 'X'. Computer is 'O'.\n")
     print_board(board)
 
     while True:
         if current_player == "X":
             while True:
                 user_input = input(
-                    f"\nPlayer X, enter row and col (0-{n-1}, e.g., '1 2'): "
+                    f"\nYour turn (X)! Enter row and col separated by a space (0 to {n-1}): "
                 ).strip()
                 try:
-                    r, c = map(int, user_input.split())
-                    if 0 <= r < n and 0 <= c < n and board[r][c] == " ":
+                    parts = user_input.split()
+                    if len(parts) != 2:
+                        print("Please enter exactly two numbers (row and column).")
+                        continue
+                    r, c = int(parts[0]), int(parts[1])
+                    if not (0 <= r < n and 0 <= c < n):
+                        print(f"Coordinates out of bounds! Choose values between 0 and {n-1}.")
+                    elif board[r][c] != " ":
+                        print(f"Square ({r}, {c}) is already occupied! Pick an empty cell.")
+                    else:
                         board[r][c] = "X"
                         break
-                    else:
-                        print(f"Spot taken or out of range (0-{n-1}). Try again.")
                 except ValueError:
-                    print(
-                        "Invalid input format. Enter two numbers separated by a space."
-                    )
+                    print("Invalid input. Please enter numbers only (e.g., '1 2').")
         else:
-            print("\nComputer (O) is thinking...")
+            print("\nComputer (O) is calculating its move...")
             r, c = get_computer_move(board, difficulty)
             board[r][c] = "O"
+            print(f"Computer placed an 'O' at row {r}, column {c}.")
 
+        print()
         print_board(board)
 
         winner = check_winner(board)
         if winner:
+            print("\n" + "-" * 35)
             if winner == "Draw":
-                print("\nIt's a draw!")
+                print("Game Over: It's a draw! Well played.")
+            elif winner == "X":
+                print(f"Congratulations! You connected {n} in a row and won!")
             else:
-                print(f"\nPlayer {winner} wins!")
+                print(f"Game Over: The computer connected {n} in a row and won.")
+            print("-" * 35)
             break
 
         current_player = "O" if current_player == "X" else "X"
 
 
 def main():
+    print("Welcome to N x N Tic-Tac-Toe!")
     while True:
         play_round()
-        play_again = input("\nDo you want to play again? (y/n): ").strip().lower()
-        if play_again not in ("y", "yes"):
-            print("Thanks for playing!")
-            break
+        while True:
+            play_again = input("\nWould you like to play another round? (y/n): ").strip().lower()
+            if play_again in ("y", "yes"):
+                print("\nRestarting game...\n")
+                break
+            elif play_again in ("n", "no"):
+                print("\nThank you for playing! Have a great day!")
+                return
+            else:
+                print("Please type 'y' for yes or 'n' for no.")
 
 
 if __name__ == "__main__":
