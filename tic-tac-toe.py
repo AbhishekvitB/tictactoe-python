@@ -1,18 +1,29 @@
 import math
 import random
 
+# Tic-Tac-Toe game project.
+# This program supports different board sizes and lets two players play against each other
+# or play against the computer. The code is split into small functions so each part of
+# the game is easier to understand and manage.
 
-def print_board(board):
+# This function prints the board on the screen.
+# It converts the internal 2D list into a visible table that the player can understand.
+def print_board(board):                   
+    '''This generates a board of size NxN'''
     n = len(board)
-    print("  " + " ".join(f" {c} " for c in range(n)))
+    print("  " + " ".join(f" {c} " for c in range(n)))    #This is done in between the columns 
     for r in range(n):
         row_str = "|".join(f" {board[r][c]} " for c in range(n))
         print(f"{r} {row_str}")
         if r < n - 1:
-            print("  " + "+".join(["---"] * n))
+            print("  " + "+".join(["---"] * n))           #This is joined with + in the between the rows
 
 
-def check_winner(board):
+# This function checks whether anyone has won.
+# It inspects rows, columns, and diagonals to find a full line of Xs or Os.
+# If no one wins and the board is full, it returns Draw.
+def check_winner(board): 
+    '''This module checks who wins....'''
     n = len(board)
 
     # Check Rows
@@ -43,7 +54,9 @@ def check_winner(board):
     return "Draw"
 
 
-def evaluate_line(line, n):
+# This function gives a score to one line of the board.
+# It helps the AI decide if a row or diagonal is strong or weak.
+def evaluate_line(line, n):   #
     o_count = line.count("O")
     x_count = line.count("X")
 
@@ -57,6 +70,8 @@ def evaluate_line(line, n):
     return 0
 
 
+# This function checks the whole board and adds up all the line scores.
+# The AI uses this to judge the overall position before making a move.
 def evaluate_board(board):
     n = len(board)
     score = 0
@@ -71,11 +86,16 @@ def evaluate_board(board):
     return score
 
 
+# This function returns all empty cells on the board.
+# These are the possible places where a player can move next.
 def get_available_moves(board):
     n = len(board)
     return [(r, c) for r in range(n) for c in range(n) if board[r][c] == " "]
 
 
+# This is the minimax algorithm.
+# It looks ahead to future moves and decides which move gives the best result.
+# The AI tries to maximize its chances of winning and minimize the opponent's chances.
 def minimax(board, depth, is_maximizing, alpha, beta, max_depth):
     winner = check_winner(board)
     if winner == "O":
@@ -113,6 +133,8 @@ def minimax(board, depth, is_maximizing, alpha, beta, max_depth):
         return min_eval
 
 
+# This function checks all legal moves and chooses the one with the best score.
+# It is used by the computer to make smart decisions.
 def get_best_move(board):
     n = len(board)
     max_depth = 6 if n == 3 else (4 if n == 4 else 3)
@@ -133,6 +155,8 @@ def get_best_move(board):
     return best_move
 
 
+# This function decides how the computer moves based on the difficulty selected by the player.
+# Easy mode picks random moves, while harder modes use the minimax strategy.
 def get_computer_move(board, difficulty):
     moves = get_available_moves(board)
     if difficulty == 1:
@@ -142,6 +166,9 @@ def get_computer_move(board, difficulty):
     return get_best_move(board)
 
 
+# This function takes input from the human player.
+# It validates the row and column, checks whether the square is empty,
+# and lets the player quit the game if needed.
 def get_human_move(player, n, board):
     while True:
         user_input = input(
@@ -167,6 +194,8 @@ def get_human_move(player, n, board):
             print("Invalid input. Please enter numbers only (e.g., '1 2') or 'q' to quit.")
 
 
+# This function asks the user which mode they want to play.
+# The player can choose between a two-player match or a match against the computer.
 def select_game_mode():
     while True:
         print("\nSelect Game Mode:")
@@ -196,7 +225,11 @@ def select_game_mode():
             print("Unrecognized response. Let's reselect.")
 
 
-def play_round():
+# This function runs one full round of the game.
+# It sets up the board, chooses the mode, takes turns, checks for a winner,
+# and ends the round when the match is over.
+# The starting player alternates after each round so the second player gets the first move next time.
+def play_round(starting_player="X"):
     print("=" * 50)
     print("           N x N CLASSIC TIC-TAC-TOE")
     print("=" * 50)
@@ -234,16 +267,20 @@ def play_round():
             print("Invalid selection. Please enter 1, 2, or 3.")
 
     board = [[" " for _ in range(n)] for _ in range(n)]
-    current_player = "X"
+    current_player = starting_player
 
     if game_mode == 1:
         print(f"\nStarting Human vs Human game on a {n}x{n} grid!")
+        print(f"This round starts with Player {starting_player} ('{starting_player}').")
         print("Player 1 is 'X', Player 2 is 'O'.\n")
     else:
         print(
             f"\nStarting Human vs AI game on a {n}x{n} grid! (Difficulty: {difficulty_labels[difficulty]})"
         )
-        print("You are 'X', AI is 'O'.\n")
+        if starting_player == "O":
+            print("The AI gets the first move in this round.\n")
+        else:
+            print("You get the first move in this round.\n")
 
     print_board(board)
 
@@ -292,10 +329,19 @@ def play_round():
         current_player = "O" if current_player == "X" else "X"
 
 
+# This is the main function of the program.
+# It starts the game and keeps asking the player whether they want to play again.
+# The starting player alternates each round so the second player gets the first move next time.
 def main():
     print("          Welcome to N x N Tic-Tac-Toe!")
+    next_starter = "X"
     while True:
-        play_round()
+        play_round(starting_player=next_starter)
+        if next_starter == "X":
+            next_starter = "O"
+        else:
+            next_starter = "X"
+
         while True:
             play_again = (
                 input("\nWould you like to play another round? (y/n): ")
