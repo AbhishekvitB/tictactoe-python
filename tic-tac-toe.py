@@ -135,12 +135,32 @@ def minimax(board, depth, is_maximizing, alpha, beta, max_depth):
 
 # This function checks all legal moves and chooses the one with the best score.
 # It is used by the computer to make smart decisions.
+# At the hardest level, the AI first looks for immediate winning moves and blocks
+# opponent wins so it is not only trying to draw.
 def get_best_move(board):
     n = len(board)
+    moves = get_available_moves(board)
+
+    # First priority: win immediately if possible.
+    for r, c in moves:
+        board[r][c] = "O"
+        if check_winner(board) == "O":
+            board[r][c] = " "
+            return (r, c)
+        board[r][c] = " "
+
+    # Second priority: block the opponent's immediate winning move.
+    for r, c in moves:
+        board[r][c] = "X"
+        if check_winner(board) == "X":
+            board[r][c] = " "
+            return (r, c)
+        board[r][c] = " "
+
+    # If no immediate win or block is needed, do the deeper minimax search.
     max_depth = 6 if n == 3 else (4 if n == 4 else 3)
     best_val = -math.inf
     best_move = None
-    moves = get_available_moves(board)
 
     center = (n - 1) / 2
     moves.sort(key=lambda pos: abs(pos[0] - center) + abs(pos[1] - center))
