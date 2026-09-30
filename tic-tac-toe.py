@@ -1,101 +1,95 @@
 import math
 import random
 
-# Tic-Tac-Toe game project.
-# This program supports different board sizes and lets two players play against each other
-# or play against the computer. The code is split into small functions so each part of
-# the game is easier to understand and manage.
+# N x N Tic-Tac-Toe project
+# Supports custom grid sizes and both 2-player and AI gameplay modes.
 
-# This function prints the board on the screen.
-# It converts the internal 2D list into a visible table that the player can understand.
-def print_board(board):                   
-    '''This generates a board of size NxN'''
+
+def print_board(board):
     n = len(board)
-    print("  " + " ".join(f" {c} " for c in range(n)))    #This is done in between the columns 
+    # Print column header indices
+    print("  " + " ".join(f" {c} " for c in range(n)))
     for r in range(n):
         row_str = "|".join(f" {board[r][c]} " for c in range(n))
         print(f"{r} {row_str}")
         if r < n - 1:
-            print("  " + "+".join(["---"] * n))           #This is joined with + in the between the rows
+            print("  " + "+".join(["---"] * n))
 
 
-# This function checks whether anyone has won.
-# It inspects rows, columns, and diagonals to find a full line of Xs or Os.
-# If no one wins and the board is full, it returns Draw.
-def check_winner(board): 
-    '''This module checks who wins....'''
+def check_winner(board):
     n = len(board)
 
-    # Check Rows
+    # Check rows
     for r in range(n):
-        first = board[r][0]
-        if first != " " and all(board[r][c] == first for c in range(n)):
-            return first
+        if board[r][0] != " " and all(board[r][c] == board[r][0] for c in range(n)):
+            return board[r][0]
 
-    # Check Columns
+    # Check columns
     for c in range(n):
-        first = board[0][c]
-        if first != " " and all(board[r][c] == first for r in range(n)):
-            return first
+        if board[0][c] != " " and all(board[r][c] == board[0][c] for r in range(n)):
+            return board[0][c]
 
-    # Check Main Diagonal
-    first_main = board[0][0]
-    if first_main != " " and all(board[i][i] == first_main for i in range(n)):
-        return first_main
+    # Check main diagonal
+    if board[0][0] != " " and all(board[i][i] == board[0][0] for i in range(n)):
+        return board[0][0]
 
-    # Check Anti-Diagonal
-    first_anti = board[0][n - 1]
-    if first_anti != " " and all(board[i][n - 1 - i] == first_anti for i in range(n)):
-        return first_anti
+    # Check anti-diagonal
+    if board[0][n - 1] != " " and all(board[i][n - 1 - i] == board[0][n - 1] for i in range(n)):
+        return board[0][n - 1]
 
-    # Check for Draw or Ongoing Game
-    if any(board[r][c] == " " for r in range(n) for c in range(n)):
-        return None
+    # Check for empty spots or draw
+    for r in range(n):
+        for c in range(n):
+            if board[r][c] == " ":
+                return None
     return "Draw"
 
 
-# This function gives a score to one line of the board.
-# It helps the AI decide if a row or diagonal is strong or weak.
-def evaluate_line(line, n):   #
+# Score heuristic for individual rows, cols, or diagonals
+def evaluate_line(line, n):
     o_count = line.count("O")
     x_count = line.count("X")
 
+    # If both marks exist in the same line, neither can complete it
     if o_count > 0 and x_count > 0:
         return 0
 
     if o_count > 0:
-        return 10 ** (o_count)
+        return 10 ** o_count
     if x_count > 0:
-        return -(10 ** (x_count))
+        return -(10 ** x_count)
     return 0
 
 
-# This function checks the whole board and adds up all the line scores.
-# The AI uses this to judge the overall position before making a move.
+# Sum heuristic scores across the entire board
 def evaluate_board(board):
     n = len(board)
-    score = 0
+    total_score = 0
 
     for i in range(n):
-        score += evaluate_line(board[i], n)
-        score += evaluate_line([board[r][i] for r in range(n)], n)
+        # Rows and columns
+        total_score += evaluate_line(board[i], n)
+        total_score += evaluate_line([board[r][i] for r in range(n)], n)
 
-    score += evaluate_line([board[i][i] for i in range(n)], n)
-    score += evaluate_line([board[i][n - 1 - i] for i in range(n)], n)
+    # Both diagonals
+    total_score += evaluate_line([board[i][i] for i in range(n)], n)
+    total_score += evaluate_line([board[i][n - 1 - i] for i in range(n)], n)
 
-    return score
+    return total_score
 
 
-# This function returns all empty cells on the board.
-# These are the possible places where a player can move next.
+# Get list of open coordinates
 def get_available_moves(board):
     n = len(board)
-    return [(r, c) for r in range(n) for c in range(n) if board[r][c] == " "]
+    moves = []
+    for r in range(n):
+        for c in range(n):
+            if board[r][c] == " ":
+                moves.append((r, c))
+    return moves
 
 
-# This is the minimax algorithm.
-# It looks ahead to future moves and decides which move gives the best result.
-# The AI tries to maximize its chances of winning and minimize the opponent's chances.
+# Minimax search with alpha-beta pruning and dynamic depth cutoff
 def minimax(board, depth, is_maximizing, alpha, beta, max_depth):
     winner = check_winner(board)
     if winner == "O":
@@ -110,38 +104,35 @@ def minimax(board, depth, is_maximizing, alpha, beta, max_depth):
     moves = get_available_moves(board)
 
     if is_maximizing:
-        max_eval = -math.inf
+        best_val = -math.inf
         for r, c in moves:
             board[r][c] = "O"
-            ev = minimax(board, depth + 1, False, alpha, beta, max_depth)
+            score = minimax(board, depth + 1, False, alpha, beta, max_depth)
             board[r][c] = " "
-            max_eval = max(max_eval, ev)
-            alpha = max(alpha, ev)
+            best_val = max(best_val, score)
+            alpha = max(alpha, score)
             if beta <= alpha:
                 break
-        return max_eval
+        return best_val
     else:
-        min_eval = math.inf
+        best_val = math.inf
         for r, c in moves:
             board[r][c] = "X"
-            ev = minimax(board, depth + 1, True, alpha, beta, max_depth)
+            score = minimax(board, depth + 1, True, alpha, beta, max_depth)
             board[r][c] = " "
-            min_eval = min(min_eval, ev)
-            beta = min(beta, ev)
+            best_val = min(best_val, score)
+            beta = min(beta, score)
             if beta <= alpha:
                 break
-        return min_eval
+        return best_val
 
 
-# This function checks all legal moves and chooses the one with the best score.
-# It is used by the computer to make smart decisions.
-# At the hardest level, the AI first looks for immediate winning moves and blocks
-# opponent wins so it is not only trying to draw.
+# Select best tactical move for the AI
 def get_best_move(board):
     n = len(board)
     moves = get_available_moves(board)
 
-    # First priority: win immediately if possible.
+    # 1. Take immediate win if available
     for r, c in moves:
         board[r][c] = "O"
         if check_winner(board) == "O":
@@ -149,7 +140,7 @@ def get_best_move(board):
             return (r, c)
         board[r][c] = " "
 
-    # Second priority: block the opponent's immediate winning move.
+    # 2. Block opponent's immediate win
     for r, c in moves:
         board[r][c] = "X"
         if check_winner(board) == "X":
@@ -157,26 +148,26 @@ def get_best_move(board):
             return (r, c)
         board[r][c] = " "
 
-    # If no immediate win or block is needed, do the deeper minimax search.
+    # Depth limits based on board size to avoid slow execution
     max_depth = 6 if n == 3 else (4 if n == 4 else 3)
-    best_val = -math.inf
+    best_score = -math.inf
     best_move = None
 
+    # Move ordering: center-outward heuristic
     center = (n - 1) / 2
     moves.sort(key=lambda pos: abs(pos[0] - center) + abs(pos[1] - center))
 
     for r, c in moves:
         board[r][c] = "O"
-        move_val = minimax(board, 0, False, -math.inf, math.inf, max_depth)
+        score = minimax(board, 0, False, -math.inf, math.inf, max_depth)
         board[r][c] = " "
-        if move_val > best_val:
-            best_val = move_val
+        if score > best_score:
+            best_score = score
             best_move = (r, c)
     return best_move
 
 
-# This function decides how the computer moves based on the difficulty selected by the player.
-# Easy mode picks random moves, while harder modes use the minimax strategy.
+# Pick move based on active difficulty level
 def get_computer_move(board, difficulty):
     moves = get_available_moves(board)
     if difficulty == 1:
@@ -186,9 +177,7 @@ def get_computer_move(board, difficulty):
     return get_best_move(board)
 
 
-# This function takes input from the human player.
-# It validates the row and column, checks whether the square is empty,
-# and lets the player quit the game if needed.
+# Prompt and validate human player move
 def get_human_move(player, n, board):
     while True:
         user_input = input(
@@ -198,11 +187,12 @@ def get_human_move(player, n, board):
         if user_input in ("q", "quit", "exit"):
             return None, None
 
+        parts = user_input.split()
+        if len(parts) != 2:
+            print("Please enter exactly two numbers (row and column) or 'q' to exit.")
+            continue
+
         try:
-            parts = user_input.split()
-            if len(parts) != 2:
-                print("Please enter exactly two numbers (row and column) or 'q' to exit.")
-                continue
             r, c = int(parts[0]), int(parts[1])
             if not (0 <= r < n and 0 <= c < n):
                 print(f"Coordinates out of bounds! Choose values between 0 and {n-1}.")
@@ -214,8 +204,7 @@ def get_human_move(player, n, board):
             print("Invalid input. Please enter numbers only (e.g., '1 2') or 'q' to quit.")
 
 
-# This function asks the user which mode they want to play.
-# The player can choose between a two-player match or a match against the computer.
+# Select 2-player or single-player mode
 def select_game_mode():
     while True:
         print("\nSelect Game Mode:")
@@ -245,16 +234,13 @@ def select_game_mode():
             print("Unrecognized response. Let's reselect.")
 
 
-# This function runs one full round of the game.
-# It sets up the board, chooses the mode, takes turns, checks for a winner,
-# and ends the round when the match is over.
-# The starting player alternates after each round so the second player gets the first move next time.
+# Main game loop for a single round
 def play_round(starting_player="X"):
     print("=" * 50)
     print("           N x N CLASSIC TIC-TAC-TOE")
     print("=" * 50)
 
-    # 1. Select Board Size
+    # 1. Select board size
     while True:
         try:
             n = int(input("\nEnter board size N (e.g., 3 for 3x3, 4 for 4x4): ").strip())
@@ -267,10 +253,10 @@ def play_round(starting_player="X"):
     print(f"\nRule: Fill an entire line of {n} marks (row, col, or diagonal) to win.")
     print("Note: You can type 'q' at any turn to exit the current match.")
 
-    # 2. Select Game Mode with confirmation & change option
+    # 2. Select game mode
     game_mode = select_game_mode()
 
-    # 3. Select Difficulty (Only if playing against AI)
+    # 3. Select AI difficulty if applicable
     difficulty = None
     if game_mode == 2:
         print("\nChoose AI Difficulty Level:")
@@ -304,7 +290,7 @@ def play_round(starting_player="X"):
 
     print_board(board)
 
-    # Gameplay Loop
+    # Turn loop
     while True:
         if current_player == "X":
             r, c = get_human_move("X", n, board)
@@ -349,18 +335,13 @@ def play_round(starting_player="X"):
         current_player = "O" if current_player == "X" else "X"
 
 
-# This is the main function of the program.
-# It starts the game and keeps asking the player whether they want to play again.
-# The starting player alternates each round so the second player gets the first move next time.
-def main():
+def start_game():
     print("          Welcome to N x N Tic-Tac-Toe!")
     next_starter = "X"
     while True:
         play_round(starting_player=next_starter)
-        if next_starter == "X":
-            next_starter = "O"
-        else:
-            next_starter = "X"
+        # Alternate starter for each consecutive round
+        next_starter = "O" if next_starter == "X" else "X"
 
         while True:
             play_again = (
@@ -379,4 +360,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    start_game()
